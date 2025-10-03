@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Edit At Once Am
 // @namespace        http://tampermonkey.net/
-// @version        2.2
+// @version        2.3
 // @description        Edit Entry_ID Page
 // @author        Ameba Blog User
 // @match        https://ameblo.jp/*
@@ -295,7 +295,7 @@ function main(){
 
 
 
-            let title_text=call_h().textContent; // 記事タイトル
+            let title_text=call_h().querySelector('a').textContent; // 記事タイトル
             let page_title=document.querySelector('#page_title');
             if(title_text && page_title){
                 page_title.textContent=title_text; } // パネルに記事タイトルを表示
@@ -402,11 +402,9 @@ function main(){
             let article=document.querySelector('.js-entryWrapper'); //記事全体
             if(article){
                 if(article.querySelector('h1')){
-                    title_h=article.querySelector('h1'); } // 新タイプスキン
+                    title_h=article.querySelector('h1'); } // 新・旧タイプスキン
                 else if(article.querySelector('h2')){
-                    title_h=article.querySelector('h2'); } // 旧タイプスキン
-                else if(article.querySelector('h3')){
-                    title_h=article.querySelector('h3'); }} // レトロタイプスキン
+                    title_h=article.querySelector('h2'); }} // 新タイプスキン
             return title_h; }
 
     } // blog_page()
@@ -631,4 +629,3 @@ function main(){
     } // editor()
 
 } // main()
-
