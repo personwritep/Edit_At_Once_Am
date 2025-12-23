@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Edit At Once Am
 // @namespace        http://tampermonkey.net/
-// @version        2.4
+// @version        2.5
 // @description        Edit Entry_ID Page
 // @author        Ameba Blog User
 // @match        https://ameblo.jp/*
@@ -51,7 +51,7 @@ let svg_v=
     '180L138 180L138 62L19 62z" style="fill:#fff;"></path></svg>';
 
 
-
+let zoom_f;
 let title=document.title;
 
 let target=document.querySelector('head');
@@ -131,9 +131,10 @@ function main(){
             title_h.setAttribute("onContextmenu", 'return false;'); // コンテキスト非表示
             title_h.addEventListener('contextmenu', function(e){ // 専用メニュー表示
                 if(ctrl_f==0){
+                    zoom_f=mag_fix();
                     menu.style.display="block";
-                    menu.style.left=e.pageX+"px";
-                    menu.style.top=e.pageY+"px"; }}); }
+                    menu.style.left=e.pageX/zoom_f+"px";
+                    menu.style.top=e.pageY/zoom_f+"px"; }}); }
 
 
         document.addEventListener('keydown', function(event){
@@ -443,12 +444,14 @@ function main(){
 
         function menu_disp(event, target){
             if(ctrl_f==0){
+                zoom_f=mag_fix();
                 menu.style.display="block";
-                menu.style.left=event.pageX+"px";
-                menu.style.top=event.pageY+"px"; }
+                menu.style.left=event.pageX/zoom_f+"px";
+                menu.style.top=event.pageY/zoom_f+"px"; }
             retouch_item(target);
             file_item(target);
             page_item(target); }
+
 
         document.addEventListener('keydown', function(event){
             if(event.ctrlKey){
@@ -458,11 +461,13 @@ function main(){
             if(event.shiftKey){
                 menu.classList.add('c_active'); }});
 
+
         document.addEventListener('keyup', function(event){
             ctrl_f=0;
             for(let k=0; k<ac_list.length; k++){
                 ac_list[k].setAttribute("onContextmenu", 'return false;'); } // コンテキスト非表示
             menu.classList.remove('c_active'); });
+
 
         document.addEventListener('click', function(event){
             menu.style.display="none"; // 専用メニュー非表示
@@ -628,5 +633,15 @@ function main(){
             }} // scroll()
 
     } // editor()
+
+
+
+
+    function mag_fix(){
+        let body=document.body;
+        let zoom_f=window.getComputedStyle(body).getPropertyValue('zoom');
+        if(!zoom_f){
+            zoom_f=1; } // 拡大ツールがない環境の場合
+        return zoom_f; }
 
 } // main()
