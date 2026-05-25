@@ -1,0 +1,299 @@
+// ==UserScript==
+// @name         Edit At Once Am
+// @namespace    http://tampermonkey.net/
+// @version      1.5
+// @description  Edit Entry_ID Page
+// @author       Ameba Blog User
+// @match        https://ameblo.jp/*
+// @match        https://secret.ameba.jp/*
+// @match        https://blog.ameba.jp/ucs/entry/srventry*
+// @noframes
+// @grant         none
+// ==/UserScript==
+
+
+main();
+
+let target=document.querySelector('head');
+let monitor=new MutationObserver(main);
+monitor.observe(target, { childList: true });
+
+
+function main(){
+    let path=location.pathname;
+    if(path.includes('/entrylist') || path.includes('/archive') ||
+       path.includes('/theme') || path.includes('/amemberentrylist')){ // 記事一覧
+        menu_set();
+        blog_archive(); }
+    else if(path.includes('/srventrylist')){ // 記事の編集・削除
+        srventrylist(); }
+    else if(path.includes('/srventryup') || path.includes('/srventryin')){ // 編集画面
+        editor(); }
+    else if(document.querySelector('.js-entryWrapper')){ // ブログ画面・アメンバーブログ画面
+        menu_set();
+        blog_page(); }
+
+
+
+    function menu_set(){
+        let menu=
+            '<menu id="eao_menu">'+
+            '<span id="retouch">再編集</span> '+
+            '<span id="file">リスト表示</span>'+
+            '</div>'+
+            '<style>#eao_menu { position: absolute; z-index: 20; font: normal 14px Meiryo; '+
+            'padding: 3px 10px 1px; border: 1px solid #dadce0; color: #333; background: #fff; '+
+            'box-shadow: 4px 4px 2px -2px rgba(0, 0, 0, 0.48); cursor: default; display: none; } '+
+            '#eao_menu span { padding: 1px 4px 0; } '+
+            '#eao_menu span:hover { color: #fff; background: #2196f3; } '+
+            '#eao_menu.c_active span:hover { background: #90a4ae; }</style>';
+
+        if(!document.querySelector('#eao_menu')){
+            document.body.insertAdjacentHTML('beforeend', menu); }}
+
+
+    function blog_page(){
+        let menu=document.querySelector('#eao_menu');
+        let retouch=document.querySelector('#retouch');
+        let file=document.querySelector('#file');
+
+        let article=document.querySelector('.js-entryWrapper'); //記事全体
+        let title_h; // タイトル部
+        let title; // 記事タイトル
+        let ctrl_f=0; // Ctrlキー 押下フラグ
+
+        if(article){
+            if(article.querySelector('h1')){
+                title_h=article.querySelector('h1');
+                title=title_h.querySelector('a'); }
+            else if(article.querySelector('h2')){
+                title_h=article.querySelector('h2');
+                title=title_h.querySelector('a'); }
+            else if(article.querySelector('h3')){
+                title_h=article.querySelector('h3');
+                title=title_h.querySelector('a'); }
+
+            if(title){
+                title_h.setAttribute("onContextmenu", 'return false;'); // コンテキスト非表示
+                title.addEventListener('contextmenu', function(e){ // 専用メニュー表示
+                    if(ctrl_f==0){
+                        menu.style.display="block";
+                        menu.style.left=e.pageX+"px";
+                        menu.style.top=e.pageY+"px"; }});}}
+
+
+        document.addEventListener('keydown', function(event){
+            if(event.ctrlKey){
+                ctrl_f=1;
+                if(title_h){
+                    title_h.removeAttribute("onContextmenu", 'return false;'); }} // コンテキスト表示
+            if(event.shiftKey){
+                menu.classList.add('c_active'); }});
+
+        document.addEventListener('keyup', function(event){
+            ctrl_f=0;
+            if(title_h){
+                title_h.setAttribute("onContextmenu", 'return false;'); } // コンテキスト非表示
+            menu.classList.remove('c_active'); });
+
+        document.addEventListener('click', function(event){
+            menu.style.display="none";
+            ctrl_f=0;
+            if(title_h){
+                title_h.setAttribute("onContextmenu", 'return false;'); }}); // コンテキスト非表示
+
+
+        retouch.onclick=function(event){
+            event.preventDefault();
+
+            let article=document.querySelector('.js-entryWrapper');
+            let entry_id=article.getAttribute('data-unique-entry-id');
+            if(entry_id){
+                let path=
+                    'https://blog.ameba.jp/ucs/entry/srventryupdateinput.do?id='+entry_id;
+                if(!event.shiftKey){
+                    window.open(path, "_blank"); }
+                else{
+                    window.location.href=path; }}}
+
+
+        file.onclick=function(event){
+            event.preventDefault();
+
+            let article=document.querySelector('.js-entryWrapper');
+            let user=article.getAttribute('data-unique-ameba-id');
+            let entry_id=article.getAttribute('data-unique-entry-id');
+
+            let date=document.querySelector('time').getAttribute('datetime');
+            let entry_ym=date.slice(0, 4) + date.slice(5, 7);
+            let path=
+                'https://blog.ameba.jp/ucs/entry/srventrylist.do?pageID='+
+                '1&entry_ym='+entry_ym+'&user='+user+'&entry_id='+entry_id;
+            if(!event.shiftKey){
+                window.open(path, "_blank"); }
+            else{
+                window.location.href=path; }}
+
+    } // blog_page()
+
+
+
+    function blog_archive(){
+        let menu=document.querySelector('#eao_menu');
+        let retouch=document.querySelector('#retouch');
+        let file=document.querySelector('#file');
+
+        let ctrl_f=0; // Ctrlキー 押下フラグ
+        let ac_list={}; // 記事リスト
+        let skin_type=0; // 新タイプ 2 旧タイプ 1 その他 0
+
+        let ac_search=document.querySelector('.skin-borderQuiet');
+        if(ac_search){
+            skin_type=2;
+            ac_list=document.querySelectorAll('.skin-borderQuiet'); } // 新タイプスキン
+        else{
+            ac_search=document.querySelector('.skinBorderList li');
+            if(ac_search){
+                skin_type=1;
+                ac_list=document.querySelectorAll('.skinBorderList li'); }} // 旧タイプスキン
+
+        for(let k=0; k<ac_list.length; k++){
+            ac_list[k].setAttribute("onContextmenu", 'return false;'); // コンテキスト非表示
+            ac_list[k].addEventListener('contextmenu', function(e){ // 専用メニュー表示
+                menu_disp(e, ac_list[k]); }); }
+
+
+        function menu_disp(event, target){
+            if(ctrl_f==0){
+                menu.style.display="block";
+                menu.style.left=event.pageX+"px";
+                menu.style.top=event.pageY+"px"; }
+            retouch_item(target);
+            file_item(target); }
+
+        document.addEventListener('keydown', function(event){
+            if(event.ctrlKey){
+                ctrl_f=1;
+                for(let k=0; k<ac_list.length; k++){
+                    ac_list[k].removeAttribute("onContextmenu", 'return false;'); }} // コンテキスト表示
+            if(event.shiftKey){
+                menu.classList.add('c_active'); }});
+
+        document.addEventListener('keyup', function(event){
+            ctrl_f=0;
+            for(let k=0; k<ac_list.length; k++){
+                ac_list[k].setAttribute("onContextmenu", 'return false;'); } // コンテキスト非表示
+            menu.classList.remove('c_active'); });
+
+        document.addEventListener('click', function(event){
+            menu.style.display="none"; // 専用メニュー非表示
+            ctrl_f=0;
+            for(let k=0; k<ac_list.length; k++){
+                ac_list[k].setAttribute("onContextmenu", 'return false;'); }}); // コンテキスト非表示
+
+
+        function retouch_item(target){
+            retouch.onclick=function(event){
+                event.preventDefault();
+
+                let title_link=target.querySelector('h'+ skin_type +' a');
+                let entry_id_a=title_link.getAttribute('href').split('entry-');
+                if(entry_id_a[1]){
+                    let entry_id=entry_id_a[1].slice(0, 11);
+                    if(entry_id){
+                        let path=
+                            'https://blog.ameba.jp/ucs/entry/srventryupdateinput.do?id='+entry_id;
+                        if(!event.shiftKey){
+                            window.open(path, "_blank"); }
+                        else{
+                            window.location.href=path; }}}}}
+
+
+        function file_item(target){
+            file.onclick=function(event){
+                event.preventDefault();
+
+                let user;
+                let entry_id;
+                let entry_ym;
+                let date;
+
+                if(skin_type==2){
+                    date=target.querySelector('[data-uranus-component="entryItemDatetime"]').textContent; }
+                else{
+                    date=target.querySelector('.contentTime time').textContent; }
+
+                let title_link=target.querySelector('h'+ skin_type +' a').getAttribute('href');
+                let user_a=title_link.split('/');
+                if(user_a.indexOf('secret.ameba.jp')==-1){
+                    user=user_a[1]; }
+                else{
+                    user=user_a[3]; }
+                let entry_id_a=title_link.split('entry-');
+
+                if(date && user && entry_id_a[1]){
+                    entry_ym=date.replace(/[^0-9]/g, '').slice(0, 6);
+                    entry_id=entry_id_a[1].slice(0, 11);
+                    let path=
+                        'https://blog.ameba.jp/ucs/entry/srventrylist.do?pageID='+
+                        '1&entry_ym='+entry_ym+'&user='+user+'&entry_id='+entry_id;
+                    if(!event.shiftKey){
+                        window.open(path, "_blank"); }
+                    else{
+                        window.location.href=path; }
+                }}}
+
+    } // blog_archive()
+
+
+
+    function srventrylist(){
+        let arg=new Object;
+        let pair=location.search.substring(1).split('&');
+        for(let i=0; pair[i]; i++){
+            let key=pair[i].split('=');
+            arg[key[0]]=key[1]; } // key[0]がkey, key[1]がvalue
+
+        let entry_ym=arg.entry_ym;
+        let pageID=parseInt( arg.pageID, 10); // 数値に変換
+        let user=arg.user;
+        let entry_id=arg.entry_id;
+
+        let amebaId=document.querySelector('#gHeaderRight .amebaId').textContent;
+        let entryList_li=document.querySelectorAll('#entryList li');
+
+        if(user!=null){
+            if(amebaId!=user){ // 他ユーザーのブログでリスト表示を押した場合
+                if(history.length>1){
+                    window.history.back(); }
+                else{
+                    window.close(); }}
+            else{
+                let k;
+                for(k=0; k<entryList_li.length; k++){
+                    let entryList_a=entryList_li[k].querySelector('h2 a');
+                    if(entryList_a){
+                        if(entryList_a.getAttribute('href').indexOf(entry_id)!=-1){
+                            entryList_li[k].style.outline='2px solid red';
+                            entryList_li[k].scrollIntoView({block: "center"});
+                            break; }}}
+                if(k==entryList_li.length){
+                    pageID+=1;
+                    let path=
+                        'https://blog.ameba.jp/ucs/entry/srventrylist.do?pageID='+
+                        pageID+'&entry_ym='+entry_ym+'&user='+user+'&entry_id='+entry_id;
+                    window.location.href=path; }}}
+
+    } // srventrylist()
+
+
+
+    function editor(){
+        if(document.querySelector('.l-form form > .error')){ // 他ユーザで再編集を押した場合
+            if(history.length>1){
+                window.history.back(); }
+            else{
+                window.close(); }}
+    } // editor()
+
+} // main()
