@@ -1,0 +1,149 @@
+// ==UserScript==
+// @name         Edit At Once Am
+// @namespace    http://tampermonkey.net/
+// @version      0.71
+// @description  Edit Entry_ID Page
+// @author       Ameba Blog User
+// @match        https://ameblo.jp/*
+// @match        https://secret.ameba.jp/*
+// @match        https://blog.ameba.jp/ucs/entry/srventry*
+// @grant         none
+// ==/UserScript==
+
+icon_click();
+
+let target=document.querySelector('head');
+let monitor=new MutationObserver(icon_click);
+monitor.observe(target, { childList: true });
+
+function icon_click(){
+
+    if(!document.querySelector('#entryListEdit') && !document.querySelector('.l-body')){
+        //「記事の編集・削除」「編集画面」でない場合
+
+        let menu=document.createElement('div');
+        menu.innerHTML=
+            '<span id="retouch">再編集</span> '+
+            '<span id="newwork">新規作成</span> '+
+            '<span id="reblog">リブログ</span>'+
+            '<span id="file">リスト表示</span>'+
+            '<style>#eao_menu { position: absolute; z-index: 20; font: normal 14px Meiryo; '+
+            'padding: 3px 10px 1px; border: 1px solid #dadce0; color: #333; background: #fff; '+
+            'box-shadow: 4px 4px 2px -2px rgba(0, 0, 0, 0.48); cursor: default; } '+
+            '#eao_menu span { padding: 1px 4px 0; } '+
+            '#eao_menu span:hover { color: #fff; background: #2196f3; }</style>';
+        menu.setAttribute("id", 'eao_menu');
+        menu.style.display='none';
+        if(!document.getElementById('eao_menu')){
+            document.querySelector('body').appendChild(menu); }
+
+        let article=document.querySelector('.js-entryWrapper'); //記事全体
+        let title_h; // タイトル部
+        let title; // 記事タイトル
+
+        if(article){
+            if(article.querySelector('h1')){
+                title_h=article.querySelector('h1');
+                title=title_h.querySelector('a'); }
+            else if(article.querySelector('h2')){
+                title_h=article.querySelector('h2');
+                title=title_h.querySelector('a'); }
+            else if(article.querySelector('h3')){
+                title_h=article.querySelector('h3');
+                title=title_h.querySelector('a'); }
+
+            if(title){
+                title_h.setAttribute("onContextmenu", 'return false;');
+
+                title.addEventListener('contextmenu', function(e){
+                    document.getElementById('eao_menu').style.display="block";
+                    document.getElementById('eao_menu').style.left=e.pageX+"px";
+                    document.getElementById('eao_menu').style.top=e.pageY+"px"; }); }}
+
+        document.body.addEventListener('click', function (e){
+            document.getElementById('eao_menu').style.display="none"; });
+
+        let retouch=document.getElementById('retouch');
+        retouch.onclick=function(){
+            let article=document.querySelector('.js-entryWrapper');
+            let entry_id=article.getAttribute('data-unique-entry-id');
+            if(entry_id){
+                let path=
+                    'https://blog.ameba.jp/ucs/entry/srventryupdateinput.do?id='+entry_id;
+                window.location.href=path; }}
+
+        let newwork=document.getElementById('newwork');
+        newwork.onclick=function(){
+            let path='https://blog.ameba.jp/ucs/entry/srventryinsertinput.do';
+            window.location.href=path; }
+
+        let reblog=document.getElementById('reblog');
+        reblog.onclick=function(){
+            let article=document.querySelector('.js-entryWrapper');
+            let user=article.getAttribute('data-unique-ameba-id');
+            let titil_str=article.getAttribute('data-unique-entry-title');
+            let entry_id=article.getAttribute('data-unique-entry-id');
+            if(user && entry_id){
+                let path=
+                    'https://blog.ameba.jp/ucs/entry/srventryinsertinput.do?'+
+                    'reblog_ameba_id='+user+'&reblog_entry_id='+entry_id+
+                    '&entry_title='+titil_str;
+                window.open(path, "_blank"); }}
+
+        let file=document.getElementById('file');
+        file.onclick=function(){
+            let article=document.querySelector('.js-entryWrapper');
+            let user=article.getAttribute('data-unique-ameba-id');
+            let entry_id=article.getAttribute('data-unique-entry-id');
+
+            let date=document.querySelector('time').getAttribute('datetime');
+            let entry_ym=date.slice(0, 4) + date.slice(5, 7);
+            let path=
+                'https://blog.ameba.jp/ucs/entry/srventrylist.do?pageID='+
+                '1&entry_ym='+entry_ym+'&user='+user+'&entry_id='+entry_id;
+            window.location.href=path; }
+    } //「記事の編集・削除」「編集画面」でない場合
+
+
+    if(document.querySelector('#entryListEdit')){ //「記事の編集・削除」の場合
+        let arg = new Object;
+        let pair=location.search.substring(1).split('&');
+        for(let i=0; pair[i]; i++){
+            let key=pair[i].split('=');
+            arg[key[0]]=key[1]; } // key[0]がkey, key[1]がvalue
+
+        let entry_ym=arg.entry_ym;
+        let pageID=parseInt( arg.pageID, 10); // 数値に変換
+        let user=arg.user;
+        let entry_id=arg.entry_id;
+
+        let amebaId=document.querySelector('#gHeaderRight .amebaId').textContent;
+        let entryList_li=document.querySelectorAll('#entryList li');
+
+        if(user!=null){
+            if(amebaId!=user){
+                window.history.back(); }
+            else{
+                let k;
+                for(k=0; k<entryList_li.length; k++){
+                    let entryList_a=entryList_li[k].querySelector('h2 a');
+                    if(entryList_a){
+                        if(entryList_a.getAttribute('href').indexOf(entry_id)!=-1){
+                            entryList_li[k].style.outline='2px solid red';
+                            entryList_li[k].scrollIntoView({block: "center"});
+                            break; }}}
+                if(k==entryList_li.length){
+                    pageID+=1;
+                    let path=
+                        'https://blog.ameba.jp/ucs/entry/srventrylist.do?pageID='+
+                        pageID+'&entry_ym='+entry_ym+'&user='+user+'&entry_id='+entry_id;
+                    window.location.href=path; }}}
+    } //「記事の編集・削除」の場合
+
+
+    if(document.querySelector('.l-body')){ //「編集画面」の場合
+        if(document.querySelector('.l-form form > .error')){
+            window.history.back(); }
+    } //「編集画面」の場合
+
+} // icon_click()
