@@ -1,0 +1,44 @@
+// ==UserScript==
+// @name         Edit At Once Am
+// @namespace    http://tampermonkey.net/
+// @version      0.21
+// @description  Edit Entry_ID Page
+// @author       Ameba Blog User
+// @match        https://ameblo.jp/XXXXXXXX*
+// @match        https://secret.ameba.jp/XXXXXXXX*
+// @run-at        document-body
+// @grant         none
+// ==/UserScript==
+
+window.addEventListener('load', function(){
+   'use strict';
+
+var blogNav_ul=document.querySelector('.skin-blogHeaderNavMenu');
+var new_li=blogNav_ul.lastElementChild.cloneNode(true);
+blogNav_ul.appendChild(new_li);
+
+new_li.children[0].setAttribute("id", "editor_link");
+let href_code='';
+    href_code +=[
+        'javascript:(function(){',
+        'var article_class=document.getElementsByClassName("skin-entry");',
+        'var entry_id=article_class[0].getAttribute("data-unique-entry-id");',
+        'var path="https://blog.ameba.jp/ucs/entry/srventryupdateinput.do?id=" + entry_id;',
+        'window.location.href=path;})();'].join(' ');
+new_li.children[0].setAttribute("href", href_code);
+new_li.children[0].childNodes[1].data='EDIT';
+
+var style_tag=document.createElement('style');
+let css='';
+    css +=[
+        '[data-uranus-component="blogNav"]>li { max-width:130px; }',
+        '.skin-topNavText:hover span { background:#fff; }',
+        '.skin-topNavIcon { height: 32px; width: 32px; font-size: 28px; line-height: 32px;',
+        'vertical-align: -9px; border: 1px solid #aaa; border-radius: 4px; transition: 0.2s; }',
+        '#editor_link [data-uranus-icon~="photo"]:before { content: "\\EA16"; color: #2196f3;',
+        'font-family: "ameba-symbols"; }'].join(' ');
+var style_state=document.createTextNode(css);
+
+style_tag.appendChild(style_state);
+document.querySelector('body').appendChild(style_tag);
+})
